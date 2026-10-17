@@ -3,6 +3,7 @@
 *The Ultimate Clean-Room Terminal for EVE-NG, GNS3, PNETLab, Cisco, Juniper, and Linux Infrastructure*
 
 <p align="center">
+  <a href="https://github.com/AtharvK-Cyber/EveTerminal/actions/workflows/ci.yml"><img src="https://github.com/AtharvK-Cyber/EveTerminal/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://debian.org"><img src="https://img.shields.io/badge/Platform-Debian%20%7C%20Ubuntu%20%7C%20Mint%20%7C%20Kali-red.svg?style=for-the-badge" alt="Platform: Debian/Ubuntu"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.9%2B-brightgreen.svg?style=for-the-badge" alt="Python: 3.9+"></a>
