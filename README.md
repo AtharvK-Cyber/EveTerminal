@@ -1,6 +1,6 @@
 # EveTerminal 🚀
-### Modern Multi-Tab & Tiled Terminal Client for Network Engineers
-*The Ultimate Clean-Room Terminal for EVE-NG, GNS3, PNETLab, Cisco, Juniper, and Linux Infrastructure*
+### Free & Open-Source SecureCRT Alternative for Linux
+*Multi-tab terminal client built for EVE-NG, GNS3, PNETLab, Cisco, Juniper, and Linux infrastructure labs*
 
 <p align="center">
   <a href="https://github.com/AtharvK-Cyber/EveTerminal/actions/workflows/ci.yml"><img src="https://github.com/AtharvK-Cyber/EveTerminal/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
@@ -315,3 +315,12 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, unit testin
 
 EveTerminal is licensed under the [MIT License](LICENSE).  
 Copyright (c) 2026 Cleanroom Terminal Contributors.
+
+---
+
+<details>
+<summary><b>🔍 Search Keywords</b></summary>
+
+SecureCRT alternative, SecureCRT for Linux, SecureCRT replacement, free SecureCRT, open source SecureCRT, EVE-NG terminal, EVE-NG telnet client, EVE-NG console client, GNS3 terminal, PNETLab terminal, Cisco lab terminal, CCNA lab tools, CCNP lab tools, CCIE lab tools, network lab terminal emulator, Linux terminal emulator for networking, multi-tab telnet client, telnet keepalive, SSH terminal client, PyQt6 terminal, Paramiko SSH, Cisco IOS tab completion, telnet disconnect fix, EVE-NG session timeout fix, DevNet tools, network automation terminal
+
+</details>
