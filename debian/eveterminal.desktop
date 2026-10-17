@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=EveTerminal
+Comment=EVE-NG & Network Multi-Tab & Tiled Terminal Client
+Exec=eveterminal %U
+Terminal=false
+Type=Application
+Icon=eveterminal
+Categories=Network;System;TerminalEmulator;
+MimeType=x-scheme-handler/ssh;x-scheme-handler/telnet;
+StartupNotify=true
+SingleMainWindow=true

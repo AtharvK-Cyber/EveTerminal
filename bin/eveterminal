@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+import sys
+import os
+
+# Resolve symlinks so /usr/local/bin/eveterminal correctly resolves to /opt/eveterminal
+real_path = os.path.realpath(__file__)
+base_dir = os.path.dirname(os.path.dirname(real_path))
+if base_dir not in sys.path:
+    sys.path.insert(0, base_dir)
+
+if os.path.exists("/opt/eveterminal") and "/opt/eveterminal" not in sys.path:
+    sys.path.insert(0, "/opt/eveterminal")
+
+from eveterminal.app import main
+
+if __name__ == "__main__":
+    sys.exit(main())

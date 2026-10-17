@@ -1,0 +1,10 @@
+securecrt-linux (1.0.0-1) unstable; urgency=medium
+
+  * Initial clean-room Debian 64-bit release.
+  * Added single-instance IPC ensuring all terminals open in the same window.
+  * Added tabbed and horizontal row tiling (R1, R2, R3 layout support).
+  * Added VanDyke .ini typed configuration import filter.
+  * Added SSH, Telnet, Serial, and local PTY backends.
+  * Added SecureCRT 'crt' Python automation scripting compatibility shim.
+
+ -- Debian Terminal Client Developers <dev@local>  Sat, 17 Oct 2026 12:00:00 +0000

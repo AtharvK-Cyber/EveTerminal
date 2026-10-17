@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=SecureCRT Linux
+Comment=SecureCRT-Compatible Multi-Tab & Tiled Terminal Client
+Exec=securecrt-linux %U
+Terminal=false
+Type=Application
+Icon=securecrt-linux
+Categories=Network;System;TerminalEmulator;
+MimeType=x-scheme-handler/ssh;x-scheme-handler/telnet;
+StartupNotify=true
+SingleMainWindow=true
