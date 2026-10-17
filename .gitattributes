@@ -1,0 +1,7 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Enforce LF line endings for shell scripts and Linux binaries
+*.sh text eol=lf
+bin/* text eol=lf
+debian/rules text eol=lf
