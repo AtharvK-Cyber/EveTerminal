@@ -42,6 +42,7 @@ from ..protocols.pty_backend import PtyConnection
 from .session_tree_dock import SessionTreeDock
 from .quick_connect_dialog import QuickConnectDialog
 from .button_bar import ButtonBar
+from .command_window import CommandWindowDock
 
 
 class SessionTab(QWidget if QT_API else object):
@@ -223,14 +224,28 @@ class MainWindow(QMainWindow if QT_API else object):
         self.session_dock.session_selected.connect(self.connect_session)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.session_dock)
 
-        # Bottom Button Bar
+        # Bottom Command Window Dock (Send to all sessions / broadcast)
+        self.command_dock = CommandWindowDock(self)
+        self.command_dock.command_submitted.connect(self._on_command_window_submitted)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.command_dock)
+        self.command_dock.hide()
+
+        # Bottom Button Bar & Toolbar
         self.button_bar = ButtonBar(self)
         self.button_bar.send_macro.connect(self._send_macro_to_active)
-        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, QToolBar("Button Bar", self))
-        self.findChild(QToolBar).addWidget(self.button_bar)
+        self.button_bar.send_macro_all.connect(self._broadcast_command_to_all)
+        self.button_bar.open_command_window.connect(self.show_command_window)
+
+        bottom_toolbar = QToolBar("Button Bar", self)
+        bottom_toolbar.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        bottom_toolbar.customContextMenuRequested.connect(lambda pos: self.show_command_window(True))
+        bottom_toolbar.addWidget(self.button_bar)
+        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, bottom_toolbar)
 
         # Status Bar
         self.setStatusBar(QStatusBar())
+        self.statusBar().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.statusBar().customContextMenuRequested.connect(lambda pos: self.show_command_window(True))
 
         # Menu bar
         self._create_menus()
@@ -275,6 +290,11 @@ class MainWindow(QMainWindow if QT_API else object):
         act_dock = self.session_dock.toggleViewAction()
         act_dock.setText("Session Manager Sidebar")
         view_menu.addAction(act_dock)
+
+        act_cmd_win = QAction("&Command Window (Send to All Sessions)...", self)
+        act_cmd_win.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        act_cmd_win.triggered.connect(lambda: self.show_command_window(True))
+        view_menu.addAction(act_cmd_win)
 
         view_menu.addSeparator()
 
@@ -412,6 +432,7 @@ class MainWindow(QMainWindow if QT_API else object):
             self.splitter.addWidget(session)
         session.terminal.setFocus()
         self.statusBar().showMessage(f"Connected: {session.title}", 3000)
+        self._update_command_window_sessions()
 
     def update_session_title(self, session: SessionTab, new_title: str) -> None:
         """Synchronizes tab label and row header with updated session name."""
@@ -423,6 +444,7 @@ class MainWindow(QMainWindow if QT_API else object):
             self.tab_widget.setTabText(idx, new_title)
         if hasattr(session, "header_bar"):
             session.header_bar.setText(f"  ● {new_title}")
+        self._update_command_window_sessions()
 
     def _show_tab_context_menu(self, pos) -> None:
         """Context menu on right clicking a tab to rename, duplicate, or close."""
@@ -433,6 +455,8 @@ class MainWindow(QMainWindow if QT_API else object):
             act_rename = menu.addAction("Rename Tab...")
             act_clone = menu.addAction("Clone Session")
             menu.addSeparator()
+            act_broadcast = menu.addAction("📢 Send Command to All Sessions (Command Window)...")
+            menu.addSeparator()
             act_close = menu.addAction("Close Tab")
             action = menu.exec(self.tab_widget.mapToGlobal(pos))
             if action == act_rename:
@@ -442,18 +466,22 @@ class MainWindow(QMainWindow if QT_API else object):
                     self.update_session_title(session, new_name.strip())
             elif action == act_clone:
                 self._clone_active_session()
+            elif action == act_broadcast:
+                self.show_command_window(send_to_all=True)
             elif action == act_close:
                 self._close_tab(idx)
 
     def _on_tab_changed(self, index: int) -> None:
         if 0 <= index < len(self.active_sessions):
             self.active_sessions[index].terminal.setFocus()
+        self._update_command_window_sessions()
 
     def _close_tab(self, index: int) -> None:
         if 0 <= index < len(self.active_sessions):
             session = self.active_sessions.pop(index)
             session.close()
             self.tab_widget.removeTab(index)
+            self._update_command_window_sessions()
 
     def _disconnect_active(self) -> None:
         session = self._get_active_session()
@@ -485,6 +513,64 @@ class MainWindow(QMainWindow if QT_API else object):
         session = self._get_active_session()
         if session and session.connection and session.connection.is_connected:
             session.connection.send(text.encode("utf-8"))
+
+    def show_command_window(self, send_to_all: bool = True) -> None:
+        """Opens or focuses the split bottom Command Window to broadcast or send commands."""
+        if hasattr(self, "command_dock"):
+            self.command_dock.set_send_to_all(send_to_all)
+            self._update_command_window_sessions()
+            self.command_dock.show()
+            self.command_dock.raise_()
+            self.command_dock.focus_input()
+
+    def _update_command_window_sessions(self) -> None:
+        """Refreshes connected session names and count in the Command Window."""
+        if not hasattr(self, "command_dock"):
+            return
+        connected_names = [s.title for s in self.active_sessions if s.connection and s.connection.is_connected]
+        active = self._get_active_session()
+        active_title = active.title if active else ""
+        self.command_dock.update_sessions_info(len(connected_names), connected_names, active_title)
+
+    def _broadcast_command_to_all(self, command: str) -> None:
+        """Broadcasts a raw command string simultaneously to all connected sessions."""
+        if not command:
+            return
+        if not command.endswith("\r") and not command.endswith("\n"):
+            payload = (command + "\r\n").encode("utf-8")
+        else:
+            payload = command.encode("utf-8")
+
+        sent_to = []
+        for s in self.active_sessions:
+            if s.connection and s.connection.is_connected:
+                s.connection.send(payload)
+                sent_to.append(s.title)
+
+        if sent_to:
+            names_str = ", ".join(sent_to)
+            clean_cmd = command.strip()
+            self.statusBar().showMessage(
+                f"📢 Broadcast '{clean_cmd}' to {len(sent_to)} sessions: {names_str}", 4000
+            )
+        else:
+            self.statusBar().showMessage("No active connected sessions to broadcast to.", 3000)
+
+    def _on_command_window_submitted(self, cmd_text: str, send_to_all: bool) -> None:
+        """Executes command from the Command Window (either broadcast or active session)."""
+        if send_to_all:
+            self._broadcast_command_to_all(cmd_text)
+        else:
+            active = self._get_active_session()
+            if active and active.connection and active.connection.is_connected:
+                if not cmd_text.endswith("\r") and not cmd_text.endswith("\n"):
+                    payload = (cmd_text + "\r\n").encode("utf-8")
+                else:
+                    payload = cmd_text.encode("utf-8")
+                active.connection.send(payload)
+                self.statusBar().showMessage(f"Sent '{cmd_text.strip()}' to {active.title}", 3000)
+            else:
+                self.statusBar().showMessage("Active session is not connected.", 3000)
 
     def _run_script_dialog(self) -> None:
         session = self._get_active_session()

@@ -59,6 +59,7 @@ Network engineers running **EVE-NG, GNS3, or PNETLab** on modern Linux systems (
 | **Cisco Command Autocomplete** (`Tab` key) | ✅ **Native** | ✅ Yes | ✅ Yes | ✅ Yes |
 | **Cisco Break Sequence** (`Ctrl+Shift+6` / `Ctrl+^`) | ✅ **Native** | ⚠️ Mapping needed | ⚠️ Mapping needed | ✅ Yes |
 | **Live Device Prompt Detection** (`R1#` $\rightarrow$ Tab sync) | ✅ **Automatic** | ❌ No | ❌ No | ❌ No |
+| **Command Window (Broadcast to All Sessions)** | ✅ **Native (`Ctrl+Shift+C`)** | ❌ No | ❌ No | ✅ Native |
 | **SecureCRT `.ini` Sessions Import** | ✅ **Native** | ❌ No | ❌ No | ✅ Native |
 | **Native Wayland & X11 Support** | ✅ **Qt6 Native** | ❌ X11 only | ✅ Yes | ❌ Wine/Legacy |
 | **License Requirement** | 🆓 **100% Free / MIT** | 🆓 Free | 🆓 Free | 💲 Paid License |
@@ -97,6 +98,13 @@ Network engineers running **EVE-NG, GNS3, or PNETLab** on modern Linux systems (
 - Reads and parses VanDyke line-oriented configuration schemas (`S:"Key"=String`, `D:"Key"=Hex32`, `B:"Key"=Binary`, `Z:"Key"=List`).
 - Supports SecureCRT color schemes: *Traditional (Green on Black)*, *Monochrome (Amber on Black)*, *Yellow on Black*, *Black on White*, and custom ANSI palettes.
 - Python scripting shim compatible with `crt.Screen`, `crt.Session`, `crt.Dialog`, and `crt.GetScriptTab()`.
+
+### 7. 📢 Command Window / Broadcast to All Sessions (`R1, R2, R3...`)
+- **Execute Commands Across All Devices**: Send commands (`conf t`, `no shut`, `show ip int br`, `wr mem`) to **every open router or switch session simultaneously**.
+- **Split-Screen Bottom Terminal**: Toggle the dockable bottom command bar via **`View -> Command Window`**, shortcut **`Ctrl+Shift+C`**, or by right-clicking any tab or bottom button bar and clicking **"Send to All Devices"**.
+- **Interactive Target Switching**: Choose between `📢 Send to All Sessions (Broadcast)` or `🎯 Send to Active Session Only` with instant visual indicators.
+- **Command History**: Browse through previously executed commands using **`Up`** and **`Down`** arrows.
+- **Session Count & Device Summary**: Real-time badge displays the exact count and names of receiving devices (`● 5 sessions: R1, R2, R3, R4, R5`).
 
 ---
 
@@ -252,6 +260,8 @@ eveterminal /SCRIPT /path/to/backup_configs.py
 | **`Tab`** | Autocomplete | Native Cisco IOS command completion (`show ip int bri` $\rightarrow$ `brief`) |
 | **`Ctrl+Shift+6`** or **`Ctrl+^`** | Cisco Break | Aborts running ping, traceroute, or DNS lookup |
 | **`Ctrl+Tab`** | Next Tab | Cycles to the next open session tab |
+| **`Ctrl+Shift+C`** | Command Window | Toggles split bottom Command Window to broadcast commands to all sessions |
+| **`Right-Click (Bottom/Tab)`** | Send to All | Opens Command Window preconfigured to broadcast to all devices |
 | **`Alt+Q`** | Quick Connect | Opens Quick Connect dialog (Telnet/SSH/Serial) |
 | **`Alt+C`** | Session Manager | Toggles the Saved Session Tree sidebar |
 | **`Alt+B`** | Clone Session | Duplicates active session connection in a new tab |
