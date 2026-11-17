@@ -1,4 +1,4 @@
-.PHONY: all test install uninstall deb clean
+.PHONY: all test install update rollback uninstall deb clean
 
 all: test
 
@@ -7,6 +7,12 @@ test:
 
 install:
 	sudo bash ./install.sh
+
+update:
+	sudo bash ./update.sh
+
+rollback:
+	sudo bash ./rollback.sh
 
 uninstall:
 	sudo bash ./uninstall.sh

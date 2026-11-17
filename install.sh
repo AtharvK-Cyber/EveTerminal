@@ -24,8 +24,10 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 INSTALL_DIR="/opt/eveterminal"
+BACKUP_DIR="/opt/eveterminal.backup"
 BIN_LINK="/usr/local/bin/eveterminal"
 ALIAS_LINK="/usr/local/bin/securecrt-linux"
+ROLLBACK_LINK="/usr/local/bin/eveterminal-rollback"
 DESKTOP_DIR="/usr/share/applications"
 ICON_DIR="/usr/share/icons/hicolor/scalable/apps"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,13 +45,27 @@ fi
 
 # 2. Deploy application payload to /opt/eveterminal
 echo -e "${BLUE}[2/5] Installing application files to ${INSTALL_DIR}...${NC}"
+if [ -d "${INSTALL_DIR}" ] && [ -n "$(ls -A "${INSTALL_DIR}" 2>/dev/null)" ]; then
+    echo -e "${YELLOW}[*] Existing installation detected. Creating backup at ${BACKUP_DIR}...${NC}"
+    rm -rf "${BACKUP_DIR}"
+    cp -r "${INSTALL_DIR}" "${BACKUP_DIR}"
+fi
+
 mkdir -p "${INSTALL_DIR}"
 rm -rf "${INSTALL_DIR:?}"/*
 
 cp -r "${SCRIPT_DIR}/eveterminal" "${INSTALL_DIR}/"
 cp -r "${SCRIPT_DIR}/bin" "${INSTALL_DIR}/"
+if [ -f "${SCRIPT_DIR}/rollback.sh" ]; then
+    cp "${SCRIPT_DIR}/rollback.sh" "${INSTALL_DIR}/rollback.sh"
+    chmod +x "${INSTALL_DIR}/rollback.sh"
+fi
+
 chmod +x "${INSTALL_DIR}/bin/eveterminal"
 chmod +x "${INSTALL_DIR}/bin/securecrt-linux"
+if [ -f "${INSTALL_DIR}/bin/eveterminal-rollback" ]; then
+    chmod +x "${INSTALL_DIR}/bin/eveterminal-rollback"
+fi
 
 # 3. Create global symlinks
 echo -e "${BLUE}[3/5] Setting up global launcher commands...${NC}"
@@ -58,6 +74,11 @@ chmod +x "${BIN_LINK}"
 
 ln -sf "${INSTALL_DIR}/bin/securecrt-linux" "${ALIAS_LINK}"
 chmod +x "${ALIAS_LINK}"
+
+if [ -f "${INSTALL_DIR}/rollback.sh" ]; then
+    ln -sf "${INSTALL_DIR}/rollback.sh" "${ROLLBACK_LINK}"
+    chmod +x "${ROLLBACK_LINK}"
+fi
 
 # 4. Install desktop icon and launcher
 echo -e "${BLUE}[4/5] Registering Application Menu icon & desktop entry...${NC}"
@@ -112,4 +133,8 @@ echo -e "    1. From your Desktop icon (double-click)."
 echo -e "    2. From your Application Menu (under Network / System / Internet)."
 echo -e "    3. Or by typing 'eveterminal' (or 'securecrt-linux') in terminal."
 echo -e "    4. EVE-NG nodes clicked in Firefox/Chrome will now open in EveTerminal!"
+echo -e "  "
+echo -e "  ${YELLOW}Rollback Safety Net:${NC}"
+echo -e "  If you ever need to restore your previous installation, simply run:"
+echo -e "    ${YELLOW}sudo eveterminal-rollback${NC}"
 echo -e "${GREEN}================================================================${NC}\n"

@@ -25,6 +25,7 @@
 - [System Architecture](#-system-architecture)
 - [Supported Platforms](#-supported-platforms)
 - [Quick 1-Command Installation](#-quick-1-command-installation)
+- [Updating & Automatic Rollback Guide](#-updating--automatic-rollback-guide)
 - [Installation via Standalone .deb Package](#-installation-via-standalone-deb-package)
 - [EVE-NG & Browser One-Click Integration](#-eve-ng--browser-one-click-integration)
 - [CLI Flags & Usage Guide](#-cli-flags--usage-guide)
@@ -183,6 +184,57 @@ sudo bash install.sh
 4. Installs the high-resolution vector icon (`eveterminal.svg`) and desktop menu launcher.
 5. Places a direct shortcut on your desktop (`~/Desktop/eveterminal.desktop`) and marks it trusted.
 6. **Registers EveTerminal as default handler for `telnet://` and `ssh://`** across your desktop environment and browser.
+
+---
+
+## 🔄 Updating & Automatic Rollback Guide
+
+Already using EveTerminal on your laptop? You can easily upgrade to get all the latest features (such as the **Command Window Broadcast Bar**, tab auto-completion improvements, and performance patches) without losing your sessions or settings.
+
+### ⚡ One-Line Instant Updater
+
+Run this single command from your terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AtharvK-Cyber/EveTerminal/main/update.sh | sudo bash
+```
+
+*(Or if you already have the repository cloned on your laptop:)*
+```bash
+cd ~/EveTerminal && git pull && sudo ./update.sh
+```
+
+#### What the updater does automatically:
+1. **Safety Backup**: Creates an automatic snapshot of your current working version at `/opt/eveterminal.backup`.
+2. **Pulls Latest Code**: Fetches the newest release with all new features and bugfixes.
+3. **Deploys Application**: Updates binaries, launchers, desktop entries, and icon caches without disrupting your saved sessions.
+4. **Installs Rollback Utility**: Equips your system with the global `eveterminal-rollback` command.
+
+---
+
+### 🛡️ One-Command Automatic Rollback
+
+If an update ever causes an unexpected issue or behavior on your laptop, **you can instantly roll back to your previous working version with one command**:
+
+```bash
+sudo eveterminal-rollback
+```
+
+*(Or via one-line curl from anywhere:)*
+```bash
+curl -fsSL https://raw.githubusercontent.com/AtharvK-Cyber/EveTerminal/main/rollback.sh | sudo bash
+```
+
+*(Or inside your cloned repository:)*
+```bash
+sudo ./rollback.sh
+```
+
+#### How the Rollback Works:
+- Instantly detects `/opt/eveterminal.backup`.
+- Restores all previous binaries, libraries, and launchers.
+- Requires zero manual configuration or file editing.
+- Leaves your user settings and saved sessions in `~/.config/eveterminal` completely untouched.
 
 ---
 

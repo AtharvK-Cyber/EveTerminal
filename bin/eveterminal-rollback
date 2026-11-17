@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# EveTerminal — Global Rollback Launcher
+# ==============================================================================
+
+if [ -f "/opt/eveterminal/rollback.sh" ]; then
+    exec sudo bash /opt/eveterminal/rollback.sh "$@"
+elif [ -f "$(dirname "$0")/../rollback.sh" ]; then
+    exec sudo bash "$(dirname "$0")/../rollback.sh" "$@"
+else
+    echo "Error: EveTerminal rollback script not found at /opt/eveterminal/rollback.sh"
+    exit 1
+fi
