@@ -204,7 +204,7 @@ class TerminalWidget(QWidget if QT_API else object):
         elif ang_delta != 0:
             self._scroll_accumulator += ang_delta / 40.0
 
-        lines = int(self._scroll_accumulator)
+        lines = int(round(self._scroll_accumulator, 4))
         if lines != 0:
             self._scroll_accumulator -= lines
             self.scroll_by(lines)

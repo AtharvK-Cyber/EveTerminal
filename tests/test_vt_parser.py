@@ -80,7 +80,7 @@ class TestVTParser(unittest.TestCase):
         # User swipes up gently in 3 small events of 12 pixels each (total 36 pixels = 2 lines)
         for _ in range(3):
             accumulator += 12.0 / char_height
-            lines = int(accumulator)
+            lines = int(round(accumulator, 4))
             if lines != 0:
                 accumulator -= lines
                 lines_scrolled += lines
