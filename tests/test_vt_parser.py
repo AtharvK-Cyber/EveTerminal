@@ -71,6 +71,42 @@ class TestVTParser(unittest.TestCase):
         active_first_line = "".join(c.char for c in self.buf.grid[0]).rstrip()
         self.assertEqual(active_first_line, "Line 7")
 
+    def test_touchpad_and_wheel_accumulator(self):
+        # Simulating smooth 2-finger touchpad scrolling accumulator
+        char_height = 18
+        accumulator = 0.0
+        lines_scrolled = 0
+
+        # User swipes up gently in 3 small events of 12 pixels each (total 36 pixels = 2 lines)
+        for _ in range(3):
+            accumulator += 12.0 / char_height
+            lines = int(accumulator)
+            if lines != 0:
+                accumulator -= lines
+                lines_scrolled += lines
+
+        self.assertEqual(lines_scrolled, 2)
+        self.assertAlmostEqual(accumulator, 0.0)
+
+    def test_network_word_delimiters(self):
+        # Test that IP address and interface names don't get split by delimiters
+        delims = set(" \t\r\n`'\"()[]{}<>,;|")
+        line = "show ip route 192.168.1.1 GigabitEthernet0/1"
+        words = []
+        cur = []
+        for ch in line:
+            if ch in delims:
+                if cur:
+                    words.append("".join(cur))
+                    cur = []
+            else:
+                cur.append(ch)
+        if cur:
+            words.append("".join(cur))
+
+        self.assertIn("192.168.1.1", words)
+        self.assertIn("GigabitEthernet0/1", words)
+
 
 if __name__ == "__main__":
     unittest.main()

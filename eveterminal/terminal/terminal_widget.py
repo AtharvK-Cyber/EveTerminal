@@ -1,8 +1,9 @@
 """
 PyQt6 / PySide6 Terminal Screen Widget.
 Renders the character grid with monospace font, scrollback handling,
-vertical scrollbar, mouse wheel scrolling, visual selection highlight,
-copy-on-select, right-click context menu, and keyboard navigation.
+vertical scrollbar, mouse wheel and 2-finger touchpad scrolling,
+visual selection highlight, copy-on-select, right-click context menu,
+and keyboard navigation.
 """
 
 import sys
@@ -35,7 +36,8 @@ except ImportError:
 class TerminalWidget(QWidget if QT_API else object):
     """
     Interactive GUI Terminal Canvas displaying the VT buffer with
-    full scrollback history, mouse wheel support, and visual selection/copy.
+    full scrollback history, mouse wheel / 2-finger touchpad scrolling,
+    and visual selection/copy/paste.
     """
 
     data_to_send = pyqtSignal(bytes) if QT_API else None
@@ -74,6 +76,7 @@ class TerminalWidget(QWidget if QT_API else object):
         self.is_selecting = False
 
         self.scroll_offset = 0  # 0 means view bottom (live output)
+        self._scroll_accumulator: float = 0.0  # Smooth 2-finger touchpad delta accumulator
         self.on_resize_callback: Optional[Callable[[int, int], None]] = None
 
         if QT_API:
@@ -158,36 +161,54 @@ class TerminalWidget(QWidget if QT_API else object):
         total_sb = len(self.parser.buffer.scrollback)
         self.scrollbar.blockSignals(True)
         self.scrollbar.setMaximum(total_sb)
+        self.scrollbar.setPageStep(max(1, self.rows))
         if self.scroll_offset == 0:
             self.scrollbar.setValue(total_sb)
         else:
             self.scrollbar.setValue(max(0, total_sb - self.scroll_offset))
         self.scrollbar.blockSignals(False)
 
-    def scroll_by(self, delta_lines: int) -> None:
-        """Positive delta scrolls down toward live output; negative scrolls up into history."""
+    def scroll_by(self, lines_up: int) -> None:
+        """
+        Positive lines_up scrolls UP into history (increases scroll_offset).
+        Negative lines_up scrolls DOWN toward live output (decreases scroll_offset).
+        """
         total_sb = len(self.parser.buffer.scrollback)
-        new_offset = max(0, min(self.scroll_offset - delta_lines, total_sb))
+        new_offset = max(0, min(self.scroll_offset + lines_up, total_sb))
         if new_offset != self.scroll_offset:
             self.scroll_offset = new_offset
             self._update_scrollbar()
             self.update()
 
     def scroll_to_bottom(self) -> None:
-        """Snaps view directly to the live output."""
+        """Snaps view directly to the live output (scroll_offset = 0)."""
         if self.scroll_offset != 0:
             self.scroll_offset = 0
             self._update_scrollbar()
             self.update()
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        """Mouse wheel scrolling for terminal scrollback."""
+        """
+        Smooth scrolling supporting both traditional mouse wheels and 
+        high-precision 2-finger laptop touchpad scrolling (Wayland, X11, libinput).
+        """
         if not QT_API:
             return
-        delta = event.angleDelta().y()
-        lines = delta // 40  # 3 lines per standard wheel notch
+
+        pix_delta = event.pixelDelta().y() if hasattr(event, "pixelDelta") else 0
+        ang_delta = event.angleDelta().y() if hasattr(event, "angleDelta") else 0
+
+        # Touchpad 2-finger scroll gives high-resolution pixelDelta; mouse wheel gives angleDelta
+        if pix_delta != 0:
+            self._scroll_accumulator += pix_delta / max(1, self.char_height)
+        elif ang_delta != 0:
+            self._scroll_accumulator += ang_delta / 40.0
+
+        lines = int(self._scroll_accumulator)
         if lines != 0:
+            self._scroll_accumulator -= lines
             self.scroll_by(lines)
+
         event.accept()
 
     def _toggle_cursor_blink(self) -> None:
@@ -204,7 +225,7 @@ class TerminalWidget(QWidget if QT_API else object):
         text = data.decode("utf-8", errors="replace")
         self.parser.feed(text)
         if QT_API:
-            # Automatically lock view to bottom so last output is always visible
+            # When viewing live output, lock view to bottom so last output is always visible
             if self.scroll_offset == 0:
                 self._update_scrollbar()
             else:
@@ -255,6 +276,23 @@ class TerminalWidget(QWidget if QT_API else object):
         self.selection_end = None
         if QT_API:
             self.update()
+
+    def select_all(self) -> None:
+        """Selects all visible screen content and copies to clipboard."""
+        self.selection_start = (0, 0)
+        self.selection_end = (self.cols - 1, self.rows - 1)
+        self._copy_selection_to_clipboard()
+        if QT_API:
+            self.update()
+
+    def paste_from_clipboard(self) -> None:
+        """Pastes system clipboard text directly into active session."""
+        if not QT_API:
+            return
+        text = QApplication.clipboard().text()
+        if text:
+            self.scroll_to_bottom()
+            self.data_to_send.emit(text.encode("utf-8"))
 
     def paintEvent(self, event) -> None:
         if not QT_API:
@@ -382,21 +420,20 @@ class TerminalWidget(QWidget if QT_API else object):
                 event.accept()
                 return
             elif (modifiers & Qt.KeyboardModifier.ShiftModifier) and key == Qt.Key.Key_V:
-                clip_text = QApplication.clipboard().text()
-                if clip_text:
-                    self.scroll_to_bottom()
-                    self.data_to_send.emit(clip_text.encode("utf-8"))
+                self.paste_from_clipboard()
                 event.accept()
                 return
             elif (modifiers & Qt.KeyboardModifier.ShiftModifier) and key == Qt.Key.Key_A:
-                self.selection_start = (0, 0)
-                self.selection_end = (self.cols - 1, self.rows - 1)
-                self._copy_selection_to_clipboard()
-                self.update()
+                self.select_all()
                 event.accept()
                 return
             elif key == Qt.Key.Key_C and self.has_selection():
                 self._copy_selection_to_clipboard()
+                event.accept()
+                return
+            elif key == Qt.Key.Key_V:
+                # Ctrl+V instant paste
+                self.paste_from_clipboard()
                 event.accept()
                 return
 
@@ -511,12 +548,13 @@ class TerminalWidget(QWidget if QT_API else object):
         if 0 <= row < self.rows:
             line = self.get_visible_row(row)
             if 0 <= col < len(line):
-                # Expand to word boundaries
+                # Word delimiter characters
+                delims = set(" \t\r\n`'\"()[]{}<>,;|")
                 sc = col
-                while sc > 0 and sc - 1 < len(line) and line[sc - 1].char not in (" ", "\t", ""):
+                while sc > 0 and sc - 1 < len(line) and line[sc - 1].char not in delims:
                     sc -= 1
                 ec = col
-                while ec < len(line) and line[ec].char not in (" ", "\t", ""):
+                while ec < len(line) and line[ec].char not in delims:
                     ec += 1
                 if sc < ec:
                     self.selection_start = (sc, row)
@@ -534,6 +572,8 @@ class TerminalWidget(QWidget if QT_API else object):
 
         r1 = max(0, min(r1, self.rows - 1))
         r2 = max(0, min(r2, self.rows - 1))
+        c1 = max(0, min(c1, self.cols - 1))
+        c2 = max(0, min(c2, self.cols - 1))
 
         lines = []
         for r in range(r1, r2 + 1):
@@ -599,14 +639,9 @@ class TerminalWidget(QWidget if QT_API else object):
         if action == act_copy:
             self._copy_selection_to_clipboard()
         elif action == act_paste:
-            if clipboard_text:
-                self.scroll_to_bottom()
-                self.data_to_send.emit(clipboard_text.encode("utf-8"))
+            self.paste_from_clipboard()
         elif action == act_select_all:
-            self.selection_start = (0, 0)
-            self.selection_end = (self.cols - 1, self.rows - 1)
-            self._copy_selection_to_clipboard()
-            self.update()
+            self.select_all()
         elif action == act_clear_scrollback:
             self.parser.buffer.scrollback.clear()
             self.scroll_to_bottom()
