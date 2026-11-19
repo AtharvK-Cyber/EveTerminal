@@ -119,6 +119,9 @@ class SSHConnection(BaseConnection):
             except Exception:
                 pass
 
+    def resize(self, cols: int, rows: int) -> None:
+        self.resize_pty(cols, rows)
+
     def disconnect(self) -> None:
         self._stop_event.set()
         self._connected = False

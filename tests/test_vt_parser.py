@@ -53,6 +53,23 @@ class TestVTParser(unittest.TestCase):
             for c in range(self.buf.cols):
                 self.assertEqual(self.buf.grid[r][c].char, " ")
 
+    def test_scrollback_and_scrolling(self):
+        # Feed 30 lines into a 24-row buffer
+        for i in range(30):
+            self.parser.feed(f"Line {i}\r\n")
+
+        # First 6 lines should have moved into scrollback
+        self.assertEqual(len(self.buf.scrollback), 6)
+        first_scrollback_line = "".join(c.char for c in self.buf.scrollback[0]).rstrip()
+        self.assertEqual(first_scrollback_line, "Line 0")
+
+        last_scrollback_line = "".join(c.char for c in self.buf.scrollback[-1]).rstrip()
+        self.assertEqual(last_scrollback_line, "Line 5")
+
+        # The active grid should have lines 6 through 29
+        active_first_line = "".join(c.char for c in self.buf.grid[0]).rstrip()
+        self.assertEqual(active_first_line, "Line 6")
+
 
 if __name__ == "__main__":
     unittest.main()

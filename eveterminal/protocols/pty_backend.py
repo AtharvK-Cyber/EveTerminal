@@ -92,6 +92,17 @@ class PtyConnection(BaseConnection):
             except Exception:
                 self.disconnect()
 
+    def resize(self, cols: int, rows: int) -> None:
+        self.cols = cols
+        self.rows = rows
+        if self.master_fd is not None:
+            try:
+                import fcntl, termios, struct
+                winsize = struct.pack("HHHH", rows, cols, 0, 0)
+                fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)
+            except Exception:
+                pass
+
     def disconnect(self) -> None:
         self._stop_event.set()
         self._connected = False

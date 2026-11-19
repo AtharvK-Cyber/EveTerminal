@@ -317,6 +317,19 @@ class TelnetConnection(BaseConnection):
             except Exception:
                 self.disconnect()
 
+    def resize(self, cols: int, rows: int) -> None:
+        """Sends dynamic terminal window resize update (RFC 1073 NAWS)."""
+        self.cols = cols
+        self.rows = rows
+        if self.sock and self._connected and OPT_NAWS in self._my_opts:
+            naws_payload = bytes([
+                IAC, SB, OPT_NAWS,
+                (cols >> 8) & 0xFF, cols & 0xFF,
+                (rows >> 8) & 0xFF, rows & 0xFF,
+                IAC, SE
+            ])
+            self.send_raw(naws_payload)
+
     def disconnect(self) -> None:
         """Graceful disconnection."""
         self._stop_event.set()

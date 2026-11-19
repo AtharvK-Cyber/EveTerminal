@@ -87,6 +87,7 @@ class SessionTab(QWidget if QT_API else object):
         cols = config.get("Cols", 80)
         rows = config.get("Rows", 24)
         self.terminal = TerminalWidget(cols=cols, rows=rows, color_scheme_name=color_scheme)
+        self.terminal.on_resize_callback = self._on_terminal_resized
         layout.addWidget(self.terminal)
 
         # Wire title changes from VT sequence \x1b]0;Title\x07
@@ -109,6 +110,11 @@ class SessionTab(QWidget if QT_API else object):
         log_path_template = config.get("Log Filename", "")
         if log_path_template and config.get("Start Log Upon Connect", 0):
             self.start_logging(log_path_template)
+
+    def _on_terminal_resized(self, cols: int, rows: int) -> None:
+        """Propagates terminal window dimension changes to backend protocol (NAWS/PTY)."""
+        if self.connection and hasattr(self.connection, "resize"):
+            self.connection.resize(cols, rows)
 
     def set_title(self, new_title: str) -> None:
         """Updates tab label, row header, and emits title changed signal."""
@@ -284,6 +290,30 @@ class MainWindow(QMainWindow if QT_API else object):
         act_exit.triggered.connect(self.close)
         file_menu.addAction(act_exit)
 
+        # --- Edit Menu ---
+        edit_menu = menubar.addMenu("&Edit")
+
+        act_copy = QAction("&Copy", self)
+        act_copy.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        act_copy.triggered.connect(self._copy_active_terminal)
+        edit_menu.addAction(act_copy)
+
+        act_paste = QAction("&Paste", self)
+        act_paste.setShortcut(QKeySequence("Ctrl+Shift+V"))
+        act_paste.triggered.connect(self._paste_active_terminal)
+        edit_menu.addAction(act_paste)
+
+        edit_menu.addSeparator()
+
+        act_select_all = QAction("Select &All", self)
+        act_select_all.setShortcut(QKeySequence("Ctrl+Shift+A"))
+        act_select_all.triggered.connect(self._select_all_active_terminal)
+        edit_menu.addAction(act_select_all)
+
+        act_clear = QAction("Clear &Scrollback", self)
+        act_clear.triggered.connect(self._clear_active_terminal)
+        edit_menu.addAction(act_clear)
+
         # --- View Menu ---
         view_menu = menubar.addMenu("&View")
 
@@ -292,7 +322,7 @@ class MainWindow(QMainWindow if QT_API else object):
         view_menu.addAction(act_dock)
 
         act_cmd_win = QAction("&Command Window (Send to All Sessions)...", self)
-        act_cmd_win.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        act_cmd_win.setShortcut(QKeySequence("Ctrl+Shift+B"))
         act_cmd_win.triggered.connect(lambda: self.show_command_window(True))
         view_menu.addAction(act_cmd_win)
 
@@ -513,6 +543,34 @@ class MainWindow(QMainWindow if QT_API else object):
         session = self._get_active_session()
         if session and session.connection and session.connection.is_connected:
             session.connection.send(text.encode("utf-8"))
+
+    def _copy_active_terminal(self) -> None:
+        session = self._get_active_session()
+        if session and hasattr(session, "terminal"):
+            session.terminal._copy_selection_to_clipboard()
+
+    def _paste_active_terminal(self) -> None:
+        session = self._get_active_session()
+        if session and hasattr(session, "terminal"):
+            text = QApplication.clipboard().text()
+            if text and session.connection and session.connection.is_connected:
+                session.terminal.scroll_to_bottom()
+                session.connection.send(text.encode("utf-8"))
+
+    def _select_all_active_terminal(self) -> None:
+        session = self._get_active_session()
+        if session and hasattr(session, "terminal"):
+            t = session.terminal
+            t.selection_start = (0, 0)
+            t.selection_end = (t.cols - 1, t.rows - 1)
+            t._copy_selection_to_clipboard()
+            t.update()
+
+    def _clear_active_terminal(self) -> None:
+        session = self._get_active_session()
+        if session and hasattr(session, "terminal"):
+            session.terminal.parser.buffer.scrollback.clear()
+            session.terminal.scroll_to_bottom()
 
     def show_command_window(self, send_to_all: bool = True) -> None:
         """Opens or focuses the split bottom Command Window to broadcast or send commands."""

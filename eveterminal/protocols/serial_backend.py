@@ -92,6 +92,10 @@ class SerialConnection(BaseConnection):
             except Exception:
                 self.disconnect()
 
+    def resize(self, cols: int, rows: int) -> None:
+        self.cols = cols
+        self.rows = rows
+
     def disconnect(self) -> None:
         self._stop_event.set()
         self._connected = False
